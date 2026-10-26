@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>IA SHARKPRO</title>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-mono-numbers {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .bar {
+      transition: height 0.4s ease, background-color 0.3s ease;
+    }
+    /* Animação do botão pulsante */
+    @keyframes pulse-button {
+      0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 16px rgba(0, 230, 118, 0.45), 0 0 30px rgba(0, 230, 118, 0.2);
+      }
+      50% {
+        transform: scale(1.025);
+        box-shadow: 0 0 28px rgba(0, 230, 118, 0.85), 0 0 50px rgba(0, 230, 118, 0.4);
+      }
+    }
+    .animate-pulse-button {
+      animation: pulse-button 1.8s infinite ease-in-out;
+    }
+    @keyframes bounce-delta {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .animate-delta {
+      animation: bounce-delta 0.6s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-[#03091e] text-white flex justify-center items-center min-h-screen p-2 sm:p-4 selection:bg-blue-600 selection:text-white relative overflow-x-hidden">
+
+  <!-- Luzes ambiente ao fundo -->
+  <div class="fixed top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[380px] bg-blue-600/20 rounded-full blur-[130px] pointer-events-none"></div>
+  <div class="fixed bottom-10 left-1/2 -translate-x-1/2 w-[350px] h-[220px] bg-cyan-500/15 rounded-full blur-[110px] pointer-events-none"></div>
+
+  <!-- Container Principal Mobile -->
+  <main class="relative w-full max-w-[430px] bg-[#091538] border border-[#182e6d] rounded-2xl p-4 sm:p-5 shadow-2xl shadow-blue-950/60 flex flex-col gap-3.5 z-10 backdrop-blur-md">
+
+    <!-- Topo / Cabeçalho -->
+    <header class="flex flex-col items-center justify-center pt-1 pb-1">
+      <div class="w-full flex items-center justify-between px-1 mb-2">
+        <div class="flex items-center gap-1.5">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span id="badge-status" class="text-[10px] uppercase font-bold tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.5 rounded-full">
+            SISTEMA ONLINE
+          </span>
+        </div>
+        <div class="flex items-center gap-1">
+          <button onclick="toggleAudio()" id="btn-audio" class="p-1.5 rounded-lg text-gray-300 hover:text-white bg-[#0d1d45]/70 border border-blue-900/40 text-xs">
+            🔊
+          </button>
+          <button onclick="reiniciarSessao()" class="p-1.5 rounded-lg text-gray-300 hover:text-white bg-[#0d1d45]/70 border border-blue-900/40 text-xs">
+            🔄
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <!-- Ícone Tubarão / SharkPRO Tech Core -->
+        <div class="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-700 via-indigo-600 to-cyan-400 shadow-md shadow-blue-900/50">
+          <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C12 2 13 8 18 12C20 13.6 22 14.5 22 17C22 19.5 19.5 20.5 17 20C14 19.4 11 18 8 18C5 18 3 19 2 20C3 17 6 15 8 14C10.5 12.7 11.5 9 12 2Z" />
+          </svg>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-black tracking-wider text-white">
+          IA SHARK<span class="text-cyan-400">PRO</span>
+        </h1>
+      </div>
+      <div class="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-full bg-emerald-950/70 border border-emerald-500/30">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+        <span class="text-xs font-bold text-[#00e676] tracking-wide">Assertividade de 99%</span>
+      </div>
+    </header>
+
+    <!-- Bloco de Saldos com Contabilização Dinâmica -->
+    <div class="relative my-1 bg-gradient-to-b from-[#0e2154]/85 to-[#071436]/90 border border-[#1b3473] rounded-2xl p-4 shadow-inner">
+      <div class="flex flex-col items-center justify-center text-center space-y-3">
+        <div class="relative flex flex-col items-center">
+          <p class="text-xs text-[#90a3cf] font-medium mb-0.5">Saldo em Conta</p>
+          
+          <!-- Badge Flutuante de Ganho / Perda -->
+          <div id="delta-badge" class="hidden absolute -top-4 z-20 items-center gap-0.5 text-xs font-black font-mono-numbers px-2 py-0.5 rounded-full shadow-lg animate-delta"></div>
+          
+          <h2 id="saldo-display" class="text-3xl sm:text-4xl font-black tracking-tight font-mono-numbers text-white transition-all duration-200">
+            R$ 50,00
+          </h2>
+          <span id="contabilizando-aviso" class="hidden text-[10px] font-bold uppercase tracking-wider mt-0.5 text-emerald-400 animate-pulse">
+            ▲ Contabilizando lucros...
+          </span>
+        </div>
+
+        <div class="w-full bg-[#050f26]/80 border border-blue-900/40 rounded-xl py-2 px-3 flex items-center justify-between">
+          <div class="text-left">
+            <p class="text-[11px] text-[#8e86a0] font-medium leading-none">Lucro de Hoje</p>
+            <h3 id="lucro-display" class="text-xl sm:text-2xl font-bold text-[#00e676] tracking-tight font-mono-numbers leading-tight mt-0.5">
+              R$ 0,00
+            </h3>
+          </div>
+          <div class="text-right">
+            <span class="text-[11px] text-emerald-400 font-semibold block">99.4% assertivo</span>
+            <p class="text-[10px] text-gray-400 font-medium">
+              <span id="win-count" class="text-emerald-400 font-bold">0 WIN</span> /
+              <span id="loss-count" class="text-red-400 font-bold">0 LOSS</span> /
+              <span id="tie-count" class="text-gray-300 font-bold">0 EMP</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status de Ativação -->
+    <div id="status-box" class="w-full relative overflow-hidden rounded-xl py-3 px-4 transition-all duration-300 border-l-4 bg-[#0c1a40] border-blue-600 text-[#a5badf]">
+      <p id="status-texto" class="text-xs font-semibold tracking-wide text-center truncate">
+        Aguardando sua ativação...
+      </p>
+    </div>
+
+    <!-- Botão de Ação Verde Pulsante -->
+    <button 
+      id="btn-ativar" 
+      onclick="iniciarSessao30s()"
+      class="w-full relative overflow-hidden transition-all duration-200 text-white font-extrabold text-xs sm:text-sm py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg cursor-pointer uppercase tracking-wide border border-emerald-400/40 bg-emerald-600 hover:bg-emerald-500 animate-pulse-button">
+      <span id="btn-texto" class="font-extrabold tracking-wider text-white drop-shadow">
+        ATIVAR INTELIGÊNCIA ARTIFICIAL
+      </span>
+    </button>
+
+    <!-- Meta de Lucro -->
+    <div class="space-y-1.5 pt-1">
+      <div class="flex justify-between items-center text-xs text-[#90a3cf] font-medium px-1">
+        <span>Meta de Lucro</span>
+        <div class="flex items-center gap-2">
+          <span id="meta-percent" class="text-[11px] font-mono-numbers text-blue-300 font-semibold">0%</span>
+          <span class="text-gray-200 font-bold font-mono-numbers">R$ 202,61</span>
+        </div>
+      </div>
+      <div class="w-full bg-[#0a183d] h-2 rounded-full overflow-hidden p-[1px]">
+        <div id="progresso-meta" class="bg-gradient-to-r from-blue-600 via-cyan-400 to-[#00e676] h-full rounded-full transition-all duration-700" style="width: 4%;"></div>
+      </div>
+    </div>
+
+    <!-- Gráfico de Operações com Candles em Tempo Real -->
+    <div class="w-full bg-[#06122c] border border-[#182e6d] rounded-2xl p-3 flex flex-col gap-2.5 relative shadow-md">
+      <div class="flex items-center justify-between border-b border-blue-900/40 pb-2">
+        <span class="text-xs font-bold text-gray-200">EUR/USD (OTC)</span>
+        <span id="preco-ativo" class="text-[11px] font-mono-numbers font-bold text-emerald-400">1.08452 ↗</span>
+      </div>
+      <div id="chart-container" class="relative w-full h-32 flex items-end justify-between gap-[2px] overflow-hidden px-1">
+        <!-- Barras geradas dinamicamente via JS -->
+      </div>
+    </div>
+
+    <!-- Histórico de Operações -->
+    <div class="space-y-2">
+      <div class="flex items-center justify-between px-1 text-xs text-[#90a3cf] font-semibold">
+        <span>Últimas Entradas (<span id="total-historico">0</span>)</span>
+        <button onclick="limparHistorico()" class="text-[10px] text-gray-500 hover:text-red-400">Limpar</button>
+      </div>
+      <div id="historico-container" class="max-h-40 overflow-y-auto space-y-1.5 pr-0.5">
+        <div id="historico-vazio" class="flex flex-col items-center justify-center py-4 text-center bg-[#06122c]/60 border border-blue-950/50 rounded-xl px-3">
+          <p class="text-xs text-[#90a3cf] font-medium">O histórico de operações aparecerá aqui.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rodapé: Notificações Dinâmicas -->
+    <div class="space-y-2 mt-auto">
+      <div class="w-full bg-[#071630]/95 border border-[#142e56] rounded-xl py-2 px-3 flex items-center justify-center gap-2 text-xs shadow-sm">
+        <span class="text-emerald-400">📶 📊</span>
+        <span id="notificacao-lucro" class="text-[#00e676] font-semibold truncate">
+          Beatriz M. acabou de lucrar R$167,44!
+        </span>
+      </div>
+      <div class="w-full bg-[#08153b] border border-[#182e6d] rounded-xl py-2 px-3 flex items-center justify-center gap-2 text-xs text-gray-200 shadow-sm">
+        <span class="text-blue-400">👥 💹</span>
+        <span class="font-medium"><strong id="online-counter" class="text-white font-bold font-mono-numbers">4.241</strong> pessoas lucrando agora</span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- POPUP CENTRALIZADO (VERDE no ganho, VERMELHO na perda, BRANCO no empate) -->
+  <div id="center-popup-overlay" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-[2px]">
+    <div id="center-popup-card" class="relative w-full max-w-[340px] rounded-2xl p-5 text-center transition-all">
+      <button onclick="fecharPopup()" class="absolute top-3 right-3 text-gray-400 hover:text-white text-sm">✕</button>
+      <div class="flex items-center justify-between text-[11px] text-gray-300 mb-2 px-1 font-semibold">
+        <span id="popup-op-num" class="uppercase tracking-wider">Operação 1 de 9</span>
+        <span id="popup-asset" class="text-[10px] text-gray-400">EUR/USD (OTC)</span>
+      </div>
+      <div id="popup-icon" class="text-4xl my-2">✅</div>
+      <span id="popup-badge" class="text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-2">LUCRO OBTIDO</span>
+      <div class="my-2">
+        <span class="text-[11px] text-gray-300 block font-medium">Resultado da Entrada</span>
+        <h2 id="popup-amount" class="text-3xl sm:text-4xl font-black font-mono-numbers tracking-tight mt-0.5">+ R$ 18,40</h2>
+      </div>
+      <div class="flex items-center justify-between text-xs px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 my-3">
+        <span class="text-gray-300 font-medium text-[11px]">Saldo Atualizado:</span>
+        <span id="popup-novo-saldo" class="font-black text-white font-mono-numbers text-sm">R$ 68,40</span>
+      </div>
+      <div class="w-full bg-black/50 h-1.5 rounded-full overflow-hidden">
+        <div id="popup-bar" class="h-full rounded-full transition-all duration-75" style="width: 100%;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Sintetizador Web Audio API
+    class SoundFX {
+      constructor() { this.ctx = null; this.enabled = true; }
+      init() {
+        if (!this.ctx && window.AudioContext) this.ctx = new AudioContext();
+        if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+      }
+      play(freq, type, duration, gainVal = 0.1) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          g.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+          osc.connect(g); g.connect(this.ctx.destination);
+          osc.start(); osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {}
+      }
+      win() { this.play(523, 'sine', 0.2, 0.15); setTimeout(() => this.play(659, 'sine', 0.25, 0.15), 80); setTimeout(() => this.play(783, 'sine', 0.35, 0.15), 160); }
+      loss() { this.play(320, 'sawtooth', 0.3, 0.12); }
+      tie() { this.play(440, 'sine', 0.15, 0.1); }
+      celebration() { [523, 659, 783, 1046].forEach((f, i) => setTimeout(() => this.play(f, 'triangle', 0.4, 0.15), i * 90)); }
+    }
+    const sfx = new SoundFX();
+    function toggleAudio() {
+      sfx.enabled = !sfx.enabled;
+      document.getElementById('btn-audio').innerText = sfx.enabled ? '🔊' : '🔇';
+    }
+
+    // Variáveis de Estado
+    let saldo = 50.00;
+    let lucro = 0.00;
+    let winCount = 0;
+    let lossCount = 0;
+    let tieCount = 0;
+    let emExecucao = false;
+    let countdownInterval = null;
+    let timeoutsSessao = [];
+    let popupTimer = null;
+
+    const formatoBRL = (v) => 'R$ ' + v.toFixed(2).replace('.', ',');
+
+    // Animação de Rolagem / Contabilização Suave do Saldo
+    let animFrame = null;
+    function animarSaldo(saldoAlvo, lucroAlvo, deltaVal, tipoDelta) {
+      const saldoInicial = parseFloat(document.getElementById('saldo-display').innerText.replace('R$', '').replace('.', '').replace(',', '.').trim()) || saldo;
+      const lucroInicial = parseFloat(document.getElementById('lucro-display').innerText.replace('R$', '').replace('+', '').replace('.', '').replace(',', '.').trim()) || lucro;
+      
+      const badge = document.getElementById('delta-badge');
+      const aviso = document.getElementById('contabilizando-aviso');
+      
+      if (deltaVal > 0) {
+        badge.className = `absolute -top-4 z-20 flex items-center gap-0.5 text-xs font-black font-mono-numbers px-2 py-0.5 rounded-full shadow-lg animate-delta ${
+          tipoDelta === 'WIN' 
+            ? 'bg-emerald-950/95 text-[#00e676] border border-emerald-400/80 shadow-[0_0_12px_rgba(0,230,118,0.5)]' 
+            : 'bg-red-950/95 text-[#ff3b53] border border-red-400/80 shadow-[0_0_12px_rgba(255,59,83,0.5)]'
+        }`;
+        badge.innerText = (tipoDelta === 'WIN' ? '+ ' : '- ') + formatoBRL(deltaVal);
+        badge.classList.remove('hidden');
+        aviso.classList.remove('hidden');
+      }
+
+      const inicio = performance.now();
+      const duracao = 1400; // 1.4s
+
+      function step(agora) {
+        const progresso = Math.min(1, (agora - inicio) / duracao);
+        const ease = 1 - Math.pow(1 - progresso, 3);
+
+        const atualSaldo = saldoInicial + (saldoAlvo - saldoInicial) * ease;
+        const atualLucro = lucroInicial + (lucroAlvo - lucroInicial) * ease;
+
+        document.getElementById('saldo-display').innerText = formatoBRL(atualSaldo);
+        document.getElementById('lucro-display').innerText = (atualLucro >= 0 ? '+ ' : '') + formatoBRL(atualLucro);
+
+        if (progresso < 1) {
+          animFrame = requestAnimationFrame(step);
+        } else {
+          document.getElementById('saldo-display').innerText = formatoBRL(saldoAlvo);
+          document.getElementById('lucro-display').innerText = (lucroAlvo >= 0 ? '+ ' : '') + formatoBRL(lucroAlvo);
+          setTimeout(() => {
+            badge.classList.add('hidden');
+            aviso.classList.add('hidden');
+          }, 1200);
+        }
+      }
+      if (animFrame) cancelAnimationFrame(animFrame);
+      animFrame = requestAnimationFrame(step);
+
+      // Atualiza progresso da meta (R$ 202,61)
+      const pct = Math.min(100, Math.max(4, (lucroAlvo / 202.61) * 100));
+      document.getElementById('progresso-meta').style.width = pct + '%';
+      document.getElementById('meta-percent').innerText = Math.round(pct) + '%';
+    }
+
+    // Cronograma exato de 30 segundos (6 Lucros, 2 Prejuízos, 1 Empate)
+    const CRONOGRAMA_OPERACOES = [
+      { t: 2000, tipo: 'WIN', valor: 18.40, par: 'EUR/USD (OTC)', dir: 'CALL' },
+      { t: 5200, tipo: 'WIN', valor: 22.50, par: 'BTC/USDT', dir: 'PUT' },
+      { t: 8400, tipo: 'LOSS', valor: 15.00, par: 'EUR/USD (OTC)', dir: 'CALL' },
+      { t: 11800, tipo: 'WIN', valor: 24.80, par: 'USD/BRL (OTC)', dir: 'CALL' },
+      { t: 15200, tipo: 'EMPATE', valor: 0.00, par: 'GBP/JPY (OTC)', dir: 'PUT' },
+      { t: 18600, tipo: 'WIN', valor: 19.60, par: 'EUR/USD (OTC)', dir: 'CALL' },
+      { t: 22000, tipo: 'LOSS', valor: 14.00, par: 'BTC/USDT', dir: 'PUT' },
+      { t: 25400, tipo: 'WIN', valor: 21.20, par: 'EUR/USD (OTC)', dir: 'CALL' },
+      { t: 28400, tipo: 'WIN', valor: 26.70, par: 'USD/BRL (OTC)', dir: 'PUT' }
+    ];
+
+    function iniciarSessao30s() {
+      if (emExecucao) return;
+      emExecucao = true;
+
+      const btn = document.getElementById('btn-ativar');
+      const btnTexto = document.getElementById('btn-texto');
+      const statusTexto = document.getElementById('status-texto');
+      const badgeStatus = document.getElementById('badge-status');
+
+      btn.classList.add('bg-gradient-to-r', 'from-emerald-600', 'via-teal-500', 'to-green-500');
+      badgeStatus.innerText = 'SESSÃO 30s ATIVA';
+      statusTexto.innerText = 'Ciclo de 30s em andamento: catalogando sinais quânticos...';
+      sfx.play(440, 'triangle', 0.3);
+
+      let segundosRestantes = 30;
+      btnTexto.innerText = `OPERAÇÕES AUTOMÁTICAS (${segundosRestantes}s)`;
+
+      countdownInterval = setInterval(() => {
+        segundosRestantes--;
+        btnTexto.innerText = `OPERAÇÕES AUTOMÁTICAS (${segundosRestantes}s)`;
+        if (segundosRestantes <= 0) {
+          clearInterval(countdownInterval);
+          finalizarSessao();
+        }
+      }, 1000);
+
+      CRONOGRAMA_OPERACOES.forEach((op, index) => {
+        const timeout = setTimeout(() => {
+          executarOperacao(op, index + 1, CRONOGRAMA_OPERACOES.length);
+        }, op.t);
+        timeoutsSessao.push(timeout);
+      });
+    }
+
+    function executarOperacao(op, index, total) {
+      if (op.tipo === 'WIN') {
+        saldo += op.valor;
+        lucro += op.valor;
+        winCount++;
+        sfx.win();
+        animarGrafico(true);
+      } else if (op.tipo === 'LOSS') {
+        saldo = Math.max(0, saldo - op.valor);
+        lucro -= op.valor;
+        lossCount++;
+        sfx.loss();
+        animarGrafico(false);
+      } else {
+        tieCount++;
+        sfx.tie();
+      }
+
+      document.getElementById('win-count').innerText = `${winCount} WIN`;
+      document.getElementById('loss-count').innerText = `${lossCount} LOSS`;
+      document.getElementById('tie-count').innerText = `${tieCount} EMP`;
+
+      animarSaldo(saldo, lucro, op.valor, op.tipo);
+      adicionarHistorico(op);
+      exibirPopupCentral(op, index, total, saldo);
+    }
+
+    function exibirPopupCentral(op, index, total, novoSaldo) {
+      const overlay = document.getElementById('center-popup-overlay');
+      const card = document.getElementById('center-popup-card');
+      const bar = document.getElementById('popup-bar');
+
+      document.getElementById('popup-op-num').innerText = `Operação ${index} de ${total}`;
+      document.getElementById('popup-asset').innerText = op.par;
+      document.getElementById('popup-novo-saldo').innerText = formatoBRL(novoSaldo);
+
+      // Estilos estritos solicitados:
+      // Ganhar: VERDE
+      // Perder: VERMELHO
+      // Empatar: BRANCO
+      if (op.tipo === 'WIN') {
+        card.className = "relative w-full max-w-[340px] rounded-2xl p-5 text-center transition-all border-2 border-[#00e676] bg-[#032314]/95 shadow-[0_0_40px_rgba(0,230,118,0.5)]";
+        document.getElementById('popup-icon').innerText = '✅';
+        document.getElementById('popup-badge').className = "text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-2 bg-emerald-950 border border-emerald-500/50 text-[#00e676]";
+        document.getElementById('popup-badge').innerText = 'LUCRO OBTIDO';
+        document.getElementById('popup-amount').className = "text-3xl sm:text-4xl font-black font-mono-numbers tracking-tight mt-0.5 text-[#00e676]";
+        document.getElementById('popup-amount').innerText = '+ ' + formatoBRL(op.valor);
+        bar.className = "h-full rounded-full bg-[#00e676]";
+      } else if (op.tipo === 'LOSS') {
+        card.className = "relative w-full max-w-[340px] rounded-2xl p-5 text-center transition-all border-2 border-[#ff3b53] bg-[#29050d]/95 shadow-[0_0_40px_rgba(255,59,83,0.5)]";
+        document.getElementById('popup-icon').innerText = '❌';
+        document.getElementById('popup-badge').className = "text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-2 bg-red-950 border border-red-500/50 text-[#ff3b53]";
+        document.getElementById('popup-badge').innerText = 'PREJUÍZO COMPUTADO';
+        document.getElementById('popup-amount').className = "text-3xl sm:text-4xl font-black font-mono-numbers tracking-tight mt-0.5 text-[#ff3b53]";
+        document.getElementById('popup-amount').innerText = '- ' + formatoBRL(op.valor);
+        bar.className = "h-full rounded-full bg-[#ff3b53]";
+      } else {
+        card.className = "relative w-full max-w-[340px] rounded-2xl p-5 text-center transition-all border-2 border-white bg-[#0f172a]/95 text-white shadow-[0_0_40px_rgba(255,255,255,0.45)]";
+        document.getElementById('popup-icon').innerText = '⚪';
+        document.getElementById('popup-badge').className = "text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-2 bg-slate-800 border border-white/60 text-white";
+        document.getElementById('popup-badge').innerText = 'OPERAÇÃO EMPATADA';
+        document.getElementById('popup-amount').className = "text-3xl sm:text-4xl font-black font-mono-numbers tracking-tight mt-0.5 text-white";
+        document.getElementById('popup-amount').innerText = 'R$ 0,00';
+        bar.className = "h-full rounded-full bg-white";
+      }
+
+      overlay.classList.remove('hidden');
+
+      // Barra de progresso regressiva (2.3s)
+      bar.style.width = '100%';
+      const start = Date.now();
+      const dur = 2300;
+      if (popupTimer) clearInterval(popupTimer);
+      popupTimer = setInterval(() => {
+        const passed = Date.now() - start;
+        const rest = Math.max(0, 100 - (passed / dur) * 100);
+        bar.style.width = rest + '%';
+        if (passed >= dur) {
+          clearInterval(popupTimer);
+          overlay.classList.add('hidden');
+        }
+      }, 50);
+    }
+
+    function fecharPopup() {
+      if (popupTimer) clearInterval(popupTimer);
+      document.getElementById('center-popup-overlay').classList.add('hidden');
+    }
+
+    function finalizarSessao() {
+      emExecucao = false;
+      const btnTexto = document.getElementById('btn-texto');
+      const statusTexto = document.getElementById('status-texto');
+      const badgeStatus = document.getElementById('badge-status');
+
+      btnTexto.innerText = 'ATIVAR INTELIGÊNCIA ARTIFICIAL';
+      statusTexto.innerText = 'Sessão finalizada com 6 Lucros, 2 Prejuízos e 1 Empate!';
+      badgeStatus.innerText = 'SISTEMA ONLINE';
+
+      sfx.celebration();
+      try {
+        confetti({ particleCount: 70, spread: 60, origin: { y: 0.6 } });
+      } catch(e) {}
+    }
+
+    function adicionarHistorico(op) {
+      document.getElementById('historico-vazio')?.remove();
+      const cont = document.getElementById('historico-container');
+      const item = document.createElement('div');
+      item.className = "w-full bg-[#06122c] border border-[#182e6d] rounded-xl p-2.5 flex items-center justify-between text-xs";
+      
+      const corTexto = op.tipo === 'WIN' ? 'text-[#00e676]' : op.tipo === 'LOSS' ? 'text-[#ff3b53]' : 'text-white';
+      const sinal = op.tipo === 'WIN' ? '+ ' : op.tipo === 'LOSS' ? '- ' : '';
+      const rotulo = op.tipo === 'WIN' ? 'WIN ✅' : op.tipo === 'LOSS' ? 'LOSS ❌' : 'EMPATE ⚪';
+
+      item.innerHTML = `
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-gray-200">${op.par}</span>
+          <span class="text-[9px] bg-blue-900/60 text-blue-200 px-1 rounded">${op.dir} M1</span>
+        </div>
+        <div class="text-right">
+          <span class="font-bold font-mono-numbers ${corTexto}">${sinal}${formatoBRL(op.valor)}</span>
+          <span class="text-[9px] block text-gray-400">${rotulo}</span>
+        </div>
+      `;
+      cont.prepend(item);
+      document.getElementById('total-historico').innerText = cont.children.length;
+    }
+
+    function limparHistorico() {
+      document.getElementById('historico-container').innerHTML = `
+        <div id="historico-vazio" class="flex flex-col items-center justify-center py-4 text-center bg-[#06122c]/60 border border-blue-950/50 rounded-xl px-3">
+          <p class="text-xs text-[#90a3cf] font-medium">O histórico de operações aparecerá aqui.</p>
+        </div>
+      `;
+      document.getElementById('total-historico').innerText = '0';
+    }
+
+    function reiniciarSessao() {
+      if (confirm('Deseja reiniciar a sessão e zerar os saldos?')) {
+        timeoutsSessao.forEach(clearTimeout);
+        if (countdownInterval) clearInterval(countdownInterval);
+        emExecucao = false;
+        saldo = 50.00; lucro = 0.00; winCount = 0; lossCount = 0; tieCount = 0;
+        document.getElementById('saldo-display').innerText = 'R$ 50,00';
+        document.getElementById('lucro-display').innerText = 'R$ 0,00';
+        document.getElementById('win-count').innerText = '0 WIN';
+        document.getElementById('loss-count').innerText = '0 LOSS';
+        document.getElementById('tie-count').innerText = '0 EMP';
+        document.getElementById('btn-texto').innerText = 'ATIVAR INTELIGÊNCIA ARTIFICIAL';
+        document.getElementById('progresso-meta').style.width = '4%';
+        document.getElementById('meta-percent').innerText = '0%';
+        limparHistorico();
+      }
+    }
+
+    // Inicialização do Gráfico de Candles
+    const chart = document.getElementById('chart-container');
+    const alturas = [65, 48, 52, 40, 60, 55, 25, 75, 38, 85, 80, 35, 62, 20, 45, 90, 50, 30, 70, 15, 22, 60, 35, 42, 78, 82, 28, 64];
+    alturas.forEach(h => {
+      const b = document.createElement('div');
+      b.className = `bar w-2 rounded-full ${h > 50 ? 'bg-[#00e676]' : 'bg-[#ff3b53]'}`;
+      b.style.height = h + '%';
+      chart.appendChild(b);
+    });
+
+    function animarGrafico(subir) {
+      const bars = chart.querySelectorAll('.bar');
+      bars.forEach(bar => {
+        const rand = Math.floor(Math.random() * 70) + 20;
+        bar.style.height = rand + '%';
+        bar.className = `bar w-2 rounded-full ${Math.random() > 0.4 ? 'bg-[#00e676]' : 'bg-[#ff3b53]'}`;
+      });
+    }
+
+    // Prova social e online counter
+    const nomes = ['Beatriz M.', 'Marcos S.', 'Camila R.', 'Lucas F.', 'Felipe D.', 'Juliana P.', 'Rafael G.'];
+    setInterval(() => {
+      const n = nomes[Math.floor(Math.random() * nomes.length)];
+      const v = (Math.random() * 180 + 35).toFixed(2).replace('.', ',');
+      document.getElementById('notificacao-lucro').innerText = `${n} acabou de lucrar R$${v}!`;
+      let on = parseInt(document.getElementById('online-counter').innerText.replace('.', '')) + (Math.floor(Math.random() * 5) - 2);
+      document.getElementById('online-counter').innerText = on.toLocaleString('pt-BR');
+    }, 4000);
+  </script>
+</body>
+</html>
