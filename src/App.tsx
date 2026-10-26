@@ -602,28 +602,19 @@ export default function App() {
           </div>
         </header>
 
-        {/* CONTROLE DEDICADO: DEFINIR ENTRADA POR OPERAÇÃO */}
-        <div className="w-full bg-gradient-to-r from-[#172138] via-[#131c30] to-[#11192b] border-2 border-amber-500/50 rounded-2xl p-3 shadow-lg shadow-amber-950/30">
-          <div className="flex items-center justify-between gap-2 mb-2">
+        {/* CONTROLE DE ENTRADA POR OPERAÇÃO - DESIGN MINIMALISTA */}
+        <div className="w-full bg-[#0a101d] border border-slate-800/80 rounded-2xl p-2.5 sm:p-3 transition-colors">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-400">
-                <Coins className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-[10px] text-amber-200/90 font-bold uppercase tracking-wider block">
-                  Entrada por Operação
-                </span>
-                <span className="text-[9px] text-gray-400 block">
-                  Valor investido em cada ordem (Payout ~90%)
-                </span>
-              </div>
+              <span className="text-[11px] text-gray-300 font-medium">Entrada por Operação</span>
+              <span className="text-[10px] text-slate-500 font-mono">90% payout</span>
             </div>
 
-            {/* Valor da Entrada com Edição Rápida */}
+            {/* Valor da Entrada com Edição Rápida - Minimalista */}
             {isEditingEntradaInline ? (
               <div className="flex items-center gap-1">
                 <div className="relative">
-                  <span className="absolute left-2 top-1.5 text-xs text-amber-400 font-bold font-mono">R$</span>
+                  <span className="absolute left-2 top-1 text-[11px] text-gray-400 font-bold font-mono">R$</span>
                   <input
                     type="text"
                     autoFocus
@@ -633,13 +624,14 @@ export default function App() {
                       if (e.key === 'Enter') salvarEdicaoEntradaInline();
                       if (e.key === 'Escape') setIsEditingEntradaInline(false);
                     }}
-                    className="w-24 bg-[#050b18] border-2 border-amber-400 rounded-lg py-1 pl-7 pr-2 text-white font-mono-numbers font-black text-sm text-right focus:outline-none"
+                    className="w-20 bg-[#060a14] border border-slate-600 focus:border-amber-400 rounded-md py-0.5 pl-6 pr-1.5 text-white font-mono-numbers font-semibold text-xs text-right focus:outline-none"
                     placeholder="50,00"
                   />
                 </div>
                 <button
                   onClick={salvarEdicaoEntradaInline}
-                  className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg cursor-pointer"
+                  className="p-1 text-emerald-400 hover:text-emerald-300 cursor-pointer"
+                  title="Confirmar"
                 >
                   <Check className="w-3.5 h-3.5" />
                 </button>
@@ -652,30 +644,30 @@ export default function App() {
                     setIsEditingEntradaInline(true);
                   }
                 }}
-                className={`flex items-center gap-1.5 bg-amber-950/70 hover:bg-amber-900/70 border border-amber-500/60 rounded-xl px-2.5 py-1 transition-all ${!emExecucao ? 'cursor-pointer hover:border-amber-400' : ''}`}
-                title="Clique para digitar o valor da entrada"
+                className={`group flex items-center gap-1.5 bg-[#0e1628]/60 hover:bg-[#141f38] border border-slate-800 hover:border-slate-700 rounded-lg px-2.5 py-1 transition-all ${!emExecucao ? 'cursor-pointer' : ''}`}
+                title="Clique para editar o valor da entrada"
               >
-                <span className="text-base sm:text-lg font-black font-mono-numbers text-amber-300">
+                <span className="text-xs sm:text-sm font-bold font-mono-numbers text-gray-100 group-hover:text-amber-300 transition-colors">
                   {formatoBRL(valorEntrada)}
                 </span>
-                <Edit2 className="w-3 h-3 text-amber-400" />
+                <Edit2 className="w-2.5 h-2.5 text-slate-500 group-hover:text-amber-400 transition-colors" />
               </button>
             )}
           </div>
 
-          {/* Botões Rápidos para Selecionar o Valor da Entrada */}
-          <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-800">
-            <span className="text-[10px] text-gray-400 font-medium">Entrada rápida:</span>
+          {/* Atalhos rápidos minimalistas */}
+          <div className="flex items-center justify-between gap-1 mt-2 pt-1.5 border-t border-slate-800/60">
+            <span className="text-[10px] text-slate-500">Atalhos</span>
             <div className="flex items-center gap-1">
               {[10, 25, 50, 100, 200, 500].map(val => (
                 <button
                   key={val}
                   disabled={emExecucao}
                   onClick={() => definirEntradaRapida(val)}
-                  className={`py-1 px-1.5 text-[10px] font-mono-numbers font-bold rounded-lg border transition-all cursor-pointer ${
+                  className={`px-1.5 py-0.5 text-[10px] font-mono-numbers rounded border transition-colors cursor-pointer ${
                     valorEntrada === val
-                      ? 'bg-amber-500 text-black border-amber-300 font-black shadow-sm shadow-amber-500/40'
-                      : 'bg-[#0a1122] text-amber-200/80 border-slate-700/80 hover:border-amber-400 hover:text-white'
+                      ? 'bg-amber-400/15 text-amber-300 border-amber-500/30 font-semibold'
+                      : 'text-slate-400 border-transparent hover:text-slate-200 hover:bg-white/5'
                   }`}
                 >
                   R${val}
