@@ -18,30 +18,41 @@ import {
   Droplet,
   Fuel,
   TrendingUp,
-  BarChart2
+  BarChart2,
+  Coins
 } from 'lucide-react';
 
 interface Operacao {
   id: string;
   t: number;
   tipo: 'WIN' | 'LOSS' | 'EMPATE';
-  valor: number;
+  valorEntrada: number;
+  valor: number; // Lucro ou prejuízo líquido resultante
+  payout: number; // Ex: 0.90 (90%)
   par: string;
   dir: 'CALL' | 'PUT';
   horario: string;
 }
 
-// Cronograma focado em contratos de Petróleo e Derivados
-const CRONOGRAMA_OPERACOES: Omit<Operacao, 'id' | 'horario'>[] = [
-  { t: 2000, tipo: 'WIN', valor: 18.40, par: 'PETRA (Petróleo)', dir: 'CALL' },
-  { t: 5200, tipo: 'WIN', valor: 22.50, par: 'BRENT CRUDE (Petróleo Cru)', dir: 'PUT' },
-  { t: 8400, tipo: 'LOSS', valor: 15.00, par: 'PETRA (Petróleo)', dir: 'CALL' },
-  { t: 11800, tipo: 'WIN', valor: 24.80, par: 'WTI OIL (Petróleo Leve)', dir: 'CALL' },
-  { t: 15200, tipo: 'EMPATE', valor: 0.00, par: 'PETRA DIESEL (Refinado)', dir: 'PUT' },
-  { t: 18600, tipo: 'WIN', valor: 19.60, par: 'PETRA (Petróleo)', dir: 'CALL' },
-  { t: 22000, tipo: 'LOSS', valor: 14.00, par: 'BRENT CRUDE (Petróleo Cru)', dir: 'PUT' },
-  { t: 25400, tipo: 'WIN', valor: 21.20, par: 'PETRA (Petróleo)', dir: 'CALL' },
-  { t: 28400, tipo: 'WIN', valor: 26.70, par: 'GASÓLEO / PETRA OTC', dir: 'PUT' }
+interface TemplateOp {
+  t: number;
+  tipo: 'WIN' | 'LOSS' | 'EMPATE';
+  payout: number; // Payout do ativo de petróleo (ex: 90%)
+  par: string;
+  dir: 'CALL' | 'PUT';
+}
+
+// 9 Operações de Petróleo (6 Wins, 2 Losses, 1 Empate)
+const TEMPLATE_OPERACOES: TemplateOp[] = [
+  { t: 2000, tipo: 'WIN', payout: 0.90, par: 'PETRA (Petróleo)', dir: 'CALL' },
+  { t: 5200, tipo: 'WIN', payout: 0.92, par: 'BRENT CRUDE (Petróleo Cru)', dir: 'PUT' },
+  { t: 8400, tipo: 'LOSS', payout: 1.00, par: 'PETRA (Petróleo)', dir: 'CALL' },
+  { t: 11800, tipo: 'WIN', payout: 0.89, par: 'WTI OIL (Petróleo Leve)', dir: 'CALL' },
+  { t: 15200, tipo: 'EMPATE', payout: 0.00, par: 'PETRA DIESEL (Refinado)', dir: 'PUT' },
+  { t: 18600, tipo: 'WIN', payout: 0.91, par: 'PETRA (Petróleo)', dir: 'CALL' },
+  { t: 22000, tipo: 'LOSS', payout: 1.00, par: 'BRENT CRUDE (Petróleo Cru)', dir: 'PUT' },
+  { t: 25400, tipo: 'WIN', payout: 0.90, par: 'PETRA (Petróleo)', dir: 'CALL' },
+  { t: 28400, tipo: 'WIN', payout: 0.93, par: 'GASÓLEO / PETRA OTC', dir: 'PUT' }
 ];
 
 const NOMES_PROVA_SOCIAL = [
@@ -117,11 +128,14 @@ export default function App() {
   const [audioEnabled, setAudioEnabled] = useState<boolean>(true);
   
   // Bankroll & Profit States
-  const [saldo, setSaldo] = useState<number>(50.00);
+  const [saldo, setSaldo] = useState<number>(200.00);
   const [lucro, setLucro] = useState<number>(0.00);
-  const [displaySaldo, setDisplaySaldo] = useState<number>(50.00);
+  const [displaySaldo, setDisplaySaldo] = useState<number>(200.00);
   const [displayLucro, setDisplayLucro] = useState<number>(0.00);
-  const [metaLucroValor, setMetaLucroValor] = useState<number>(202.61);
+  
+  // ENTRADA POR OPERAÇÃO (Definido pelo usuário)
+  const [valorEntrada, setValorEntrada] = useState<number>(50.00);
+  const [metaLucroValor, setMetaLucroValor] = useState<number>(200.00);
 
   // Counters
   const [winCount, setWinCount] = useState<number>(0);
@@ -164,11 +178,18 @@ export default function App() {
   const [showResetModal, setShowResetModal] = useState<boolean>(false);
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
   
-  // Bankroll Custom Input State
-  const [inputSaldoTexto, setInputSaldoTexto] = useState<string>('50,00');
-  const [inputMetaTexto, setInputMetaTexto] = useState<string>('202,61');
+  // Editable text inputs
+  const [inputSaldoTexto, setInputSaldoTexto] = useState<string>('200,00');
+  const [inputEntradaTexto, setInputEntradaTexto] = useState<string>('50,00');
+  const [inputMetaTexto, setInputMetaTexto] = useState<string>('200,00');
+  
+  // Inline balance editing
   const [isEditingInline, setIsEditingInline] = useState<boolean>(false);
-  const [inlineSaldoInput, setInlineSaldoInput] = useState<string>('50,00');
+  const [inlineSaldoInput, setInlineSaldoInput] = useState<string>('200,00');
+
+  // Inline entry editing
+  const [isEditingEntradaInline, setIsEditingEntradaInline] = useState<boolean>(false);
+  const [inlineEntradaInput, setInlineEntradaInput] = useState<string>('50,00');
 
   // References for timers and animations
   const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
@@ -234,7 +255,7 @@ export default function App() {
 
   // Execute single trade
   const executarOperacao = (
-    opTemplate: Omit<Operacao, 'id' | 'horario'>, 
+    opTemplate: { tipo: 'WIN' | 'LOSS' | 'EMPATE'; valorEntrada: number; valor: number; payout: number; par: string; dir: 'CALL' | 'PUT' }, 
     index: number, 
     total: number, 
     currentSaldo: number, 
@@ -245,7 +266,8 @@ export default function App() {
     const op: Operacao = {
       ...opTemplate,
       id: Math.random().toString(36).substring(2, 9),
-      horario
+      horario,
+      t: 0
     };
 
     let nextSaldo = currentSaldo;
@@ -312,12 +334,12 @@ export default function App() {
     setPopupData(null);
   };
 
-  // Start 30s automated session
+  // Start 30s automated session using defined Entrada por Operação
   const iniciarSessao30s = () => {
     if (emExecucao) return;
     setEmExecucao(true);
     setSegundosRestantes(30);
-    setStatusTexto('Ciclo de 30s em andamento: extraindo sinais no fluxo de PETRÓLEO...');
+    setStatusTexto(`Ciclo de 30s ativo: entradas de ${formatoBRL(valorEntrada)} em Petróleo...`);
     sfx.play(440, 'triangle', 0.25);
 
     timeoutsRef.current.forEach(clearTimeout);
@@ -337,24 +359,46 @@ export default function App() {
     let runningSaldo = saldo;
     let runningLucro = lucro;
 
-    CRONOGRAMA_OPERACOES.forEach((item, idx) => {
+    // Gerar as operações baseadas no Valor da Entrada por Operação definido pelo usuário
+    TEMPLATE_OPERACOES.forEach((template, idx) => {
+      let valorResultado = 0;
+      if (template.tipo === 'WIN') {
+        // Lucro líquido no WIN = Entrada * Payout (ex: 90%)
+        valorResultado = Number((valorEntrada * template.payout).toFixed(2));
+      } else if (template.tipo === 'LOSS') {
+        // Prejuízo no LOSS = Valor total investido na entrada
+        valorResultado = Number(valorEntrada.toFixed(2));
+      } else {
+        // Empate = 0 (Entrada devolvida)
+        valorResultado = 0.00;
+      }
+
+      const opItem = {
+        tipo: template.tipo,
+        valorEntrada: valorEntrada,
+        valor: valorResultado,
+        payout: template.payout,
+        par: template.par,
+        dir: template.dir
+      };
+
       const tId = setTimeout(() => {
-        executarOperacao(item, idx + 1, CRONOGRAMA_OPERACOES.length, runningSaldo, runningLucro);
-        if (item.tipo === 'WIN') {
-          runningSaldo += item.valor;
-          runningLucro += item.valor;
-        } else if (item.tipo === 'LOSS') {
-          runningSaldo = Math.max(0, runningSaldo - item.valor);
-          runningLucro -= item.valor;
+        executarOperacao(opItem, idx + 1, TEMPLATE_OPERACOES.length, runningSaldo, runningLucro);
+        if (opItem.tipo === 'WIN') {
+          runningSaldo += opItem.valor;
+          runningLucro += opItem.valor;
+        } else if (opItem.tipo === 'LOSS') {
+          runningSaldo = Math.max(0, runningSaldo - opItem.valor);
+          runningLucro -= opItem.valor;
         }
-      }, item.t);
+      }, template.t);
       timeoutsRef.current.push(tId);
     });
   };
 
   const finalizarSessao = () => {
     setEmExecucao(false);
-    setStatusTexto('Sessão finalizada com 6 Lucros, 2 Prejuízos e 1 Empate em Petróleo!');
+    setStatusTexto(`Sessão finalizada com sucesso! 6 Wins, 2 Losses com entrada de ${formatoBRL(valorEntrada)}.`);
     sfx.celebration();
     try {
       confetti({
@@ -373,7 +417,7 @@ export default function App() {
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     if (popupIntervalRef.current) clearInterval(popupIntervalRef.current);
 
-    const novoSaldo = parseMoeda(inputSaldoTexto) || 50.00;
+    const novoSaldo = parseMoeda(inputSaldoTexto) || 200.00;
     setEmExecucao(false);
     setSaldo(novoSaldo);
     setLucro(0);
@@ -397,23 +441,40 @@ export default function App() {
 
   const abrirModalConfig = () => {
     setInputSaldoTexto(saldo.toFixed(2).replace('.', ','));
+    setInputEntradaTexto(valorEntrada.toFixed(2).replace('.', ','));
     setInputMetaTexto(metaLucroValor.toFixed(2).replace('.', ','));
     setShowConfigModal(true);
   };
 
   const salvarConfiguracao = () => {
     const valorDigitado = parseMoeda(inputSaldoTexto);
+    const entradaDigitada = parseMoeda(inputEntradaTexto);
     const metaDigitada = parseMoeda(inputMetaTexto);
 
     if (valorDigitado > 0) {
       setSaldo(valorDigitado);
       setDisplaySaldo(valorDigitado);
     }
+    if (entradaDigitada > 0) {
+      setValorEntrada(entradaDigitada);
+    }
     if (metaDigitada > 0) {
       setMetaLucroValor(metaDigitada);
     }
 
     setShowConfigModal(false);
+  };
+
+  // Salvar edição rápida de entrada na tela principal
+  const salvarEdicaoEntradaInline = () => {
+    const valorDigitado = parseMoeda(inlineEntradaInput);
+    if (valorDigitado > 0) {
+      setValorEntrada(valorDigitado);
+      setInputEntradaTexto(valorDigitado.toFixed(2).replace('.', ','));
+      // Ajusta meta sugerida automaticamente para ~3.5x a entrada
+      setMetaLucroValor(Number((valorDigitado * 3.5).toFixed(2)));
+    }
+    setIsEditingEntradaInline(false);
   };
 
   const salvarEdicaoInline = () => {
@@ -431,15 +492,20 @@ export default function App() {
     setIsEditingInline(false);
   };
 
-  const selecionarPresetBanca = (val: number) => {
-    setInputSaldoTexto(val.toFixed(2).replace('.', ','));
+  const definirEntradaRapida = (val: number) => {
+    if (emExecucao) return;
+    setValorEntrada(val);
+    setInputEntradaTexto(val.toFixed(2).replace('.', ','));
+    setMetaLucroValor(Number((val * 3.5).toFixed(2)));
   };
 
   // Social Proof and Live Counter ticker
   useEffect(() => {
     const interval = setInterval(() => {
       const nome = NOMES_PROVA_SOCIAL[Math.floor(Math.random() * NOMES_PROVA_SOCIAL.length)];
-      const valor = (Math.random() * 180 + 35).toFixed(2).replace('.', ',');
+      // Proporcional ao valor de entrada definido pelo usuário
+      const mult = (Math.random() * 0.9 + 0.9);
+      const valor = (valorEntrada * mult).toFixed(2).replace('.', ',');
       setNotificacaoLucro(`${nome} acabou de lucrar R$${valor} em PETRA (Petróleo)!`);
 
       setOnlineCounter(prev => {
@@ -449,7 +515,7 @@ export default function App() {
     }, 4200);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [valorEntrada]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -471,10 +537,10 @@ export default function App() {
       <div className="fixed top-1/2 -left-20 w-80 h-80 bg-amber-600/5 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Main Container Mobile Responsive Card - Petroleum Theme */}
-      <main className="relative w-full max-w-[440px] bg-gradient-to-b from-[#0c1220] via-[#090d17] to-[#070a12] border border-[#252f48] rounded-3xl p-4 sm:p-5 shadow-2xl shadow-black/90 flex flex-col gap-3.5 z-10 backdrop-blur-xl">
+      <main className="relative w-full max-w-[440px] bg-gradient-to-b from-[#0c1220] via-[#090d17] to-[#070a12] border border-[#252f48] rounded-3xl p-4 sm:p-5 shadow-2xl shadow-black/90 flex flex-col gap-3 z-10 backdrop-blur-xl">
         
         {/* Header com Elementos de Petróleo */}
-        <header className="flex flex-col items-center justify-center pt-1 pb-1">
+        <header className="flex flex-col items-center justify-center pt-1 pb-0.5">
           <div className="w-full flex items-center justify-between px-1 mb-2">
             <div className="flex items-center gap-1.5">
               <span className="relative flex h-2 w-2">
@@ -490,11 +556,11 @@ export default function App() {
             <div className="flex items-center gap-1.5">
               <button 
                 onClick={abrirModalConfig} 
-                title="Configurar Banca e Meta"
+                title="Configurar Banca, Entrada e Meta"
                 className="flex items-center gap-1 p-1.5 px-2.5 rounded-xl text-amber-300 hover:text-white bg-[#161f36]/80 border border-amber-500/40 hover:bg-[#1f2b4a] transition-all text-xs font-semibold cursor-pointer shadow-sm shadow-amber-950/40"
               >
                 <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-[10px] tracking-wide">Editar Banca</span>
+                <span className="text-[10px] tracking-wide">Configurar</span>
               </button>
               <button 
                 onClick={toggleAudio} 
@@ -514,7 +580,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2.5">
-            {/* Ícone de Petróleo / Barril & Gota de Ouro Negro */}
+            {/* Ícone de Petróleo */}
             <div className="relative flex items-center justify-center w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-500 via-yellow-600 to-amber-800 shadow-lg shadow-amber-900/60 border border-amber-300/40">
               <Droplet className="w-5 h-5 text-black fill-black" />
             </div>
@@ -536,14 +602,97 @@ export default function App() {
           </div>
         </header>
 
+        {/* CONTROLE DEDICADO: DEFINIR ENTRADA POR OPERAÇÃO */}
+        <div className="w-full bg-gradient-to-r from-[#172138] via-[#131c30] to-[#11192b] border-2 border-amber-500/50 rounded-2xl p-3 shadow-lg shadow-amber-950/30">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-amber-400">
+                <Coins className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-[10px] text-amber-200/90 font-bold uppercase tracking-wider block">
+                  Entrada por Operação
+                </span>
+                <span className="text-[9px] text-gray-400 block">
+                  Valor investido em cada ordem (Payout ~90%)
+                </span>
+              </div>
+            </div>
+
+            {/* Valor da Entrada com Edição Rápida */}
+            {isEditingEntradaInline ? (
+              <div className="flex items-center gap-1">
+                <div className="relative">
+                  <span className="absolute left-2 top-1.5 text-xs text-amber-400 font-bold font-mono">R$</span>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={inlineEntradaInput}
+                    onChange={(e) => setInlineEntradaInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') salvarEdicaoEntradaInline();
+                      if (e.key === 'Escape') setIsEditingEntradaInline(false);
+                    }}
+                    className="w-24 bg-[#050b18] border-2 border-amber-400 rounded-lg py-1 pl-7 pr-2 text-white font-mono-numbers font-black text-sm text-right focus:outline-none"
+                    placeholder="50,00"
+                  />
+                </div>
+                <button
+                  onClick={salvarEdicaoEntradaInline}
+                  className="p-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => {
+                  if (!emExecucao) {
+                    setInlineEntradaInput(valorEntrada.toFixed(2).replace('.', ','));
+                    setIsEditingEntradaInline(true);
+                  }
+                }}
+                className={`flex items-center gap-1.5 bg-amber-950/70 hover:bg-amber-900/70 border border-amber-500/60 rounded-xl px-2.5 py-1 transition-all ${!emExecucao ? 'cursor-pointer hover:border-amber-400' : ''}`}
+                title="Clique para digitar o valor da entrada"
+              >
+                <span className="text-base sm:text-lg font-black font-mono-numbers text-amber-300">
+                  {formatoBRL(valorEntrada)}
+                </span>
+                <Edit2 className="w-3 h-3 text-amber-400" />
+              </button>
+            )}
+          </div>
+
+          {/* Botões Rápidos para Selecionar o Valor da Entrada */}
+          <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-800">
+            <span className="text-[10px] text-gray-400 font-medium">Entrada rápida:</span>
+            <div className="flex items-center gap-1">
+              {[10, 25, 50, 100, 200, 500].map(val => (
+                <button
+                  key={val}
+                  disabled={emExecucao}
+                  onClick={() => definirEntradaRapida(val)}
+                  className={`py-1 px-1.5 text-[10px] font-mono-numbers font-bold rounded-lg border transition-all cursor-pointer ${
+                    valorEntrada === val
+                      ? 'bg-amber-500 text-black border-amber-300 font-black shadow-sm shadow-amber-500/40'
+                      : 'bg-[#0a1122] text-amber-200/80 border-slate-700/80 hover:border-amber-400 hover:text-white'
+                  }`}
+                >
+                  R${val}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Bloco de Saldos Estilo Terminal Petróleo com Contabilização Dinâmica */}
-        <div className="relative my-1 bg-gradient-to-b from-[#12192b]/90 via-[#0d1322]/95 to-[#080d18] border border-[#23304d] rounded-2xl p-4 shadow-inner">
+        <div className="relative my-0.5 bg-gradient-to-b from-[#12192b]/90 via-[#0d1322]/95 to-[#080d18] border border-[#23304d] rounded-2xl p-4 shadow-inner">
           <div className="flex flex-col items-center justify-center text-center space-y-3">
             <div className="relative flex flex-col items-center w-full">
               <div className="flex items-center gap-1.5 mb-0.5">
                 <span className="text-[11px] text-[#9bb0db] font-semibold flex items-center gap-1">
                   <Fuel className="w-3 h-3 text-amber-400" />
-                  Saldo da Banca
+                  Saldo em Conta
                 </span>
                 {!isEditingInline && !emExecucao && (
                   <button 
@@ -590,7 +739,7 @@ export default function App() {
                         if (e.key === 'Escape') cancelarEdicaoInline();
                       }}
                       className="w-36 bg-[#040915] border-2 border-amber-400 rounded-xl py-1.5 pl-9 pr-2 text-white font-mono-numbers font-black text-xl text-center focus:outline-none shadow-lg shadow-amber-900/50"
-                      placeholder="50,00"
+                      placeholder="200,00"
                     />
                   </div>
                   <button 
@@ -639,7 +788,7 @@ export default function App() {
 
             <div className="w-full bg-[#070d1a]/85 border border-slate-800/80 rounded-xl py-2 px-3 flex items-center justify-between">
               <div className="text-left">
-                <p className="text-[11px] text-[#8e86a0] font-medium leading-none">Lucro em Petróleo</p>
+                <p className="text-[11px] text-[#8e86a0] font-medium leading-none">Lucro de Hoje</p>
                 <h3 className={`text-xl sm:text-2xl font-bold tracking-tight font-mono-numbers leading-tight mt-0.5 ${displayLucro >= 0 ? 'text-[#00e676]' : 'text-[#ff3b53]'}`}>
                   {displayLucro >= 0 ? '+ ' : '- '}{formatoBRL(displayLucro)}
                 </h3>
@@ -657,7 +806,7 @@ export default function App() {
         </div>
 
         {/* Status de Ativação do Poço */}
-        <div className="w-full relative overflow-hidden rounded-xl py-3 px-4 transition-all duration-300 border-l-4 bg-[#0e1628] border-amber-500 text-amber-100/90 shadow-sm">
+        <div className="w-full relative overflow-hidden rounded-xl py-2.5 px-4 transition-all duration-300 border-l-4 bg-[#0e1628] border-amber-500 text-amber-100/90 shadow-sm">
           <p className="text-xs font-semibold tracking-wide text-center truncate">
             {statusTexto}
           </p>
@@ -682,7 +831,7 @@ export default function App() {
         </button>
 
         {/* Meta de Lucro com Barril */}
-        <div className="space-y-1.5 pt-1">
+        <div className="space-y-1.5 pt-0.5">
           <div className="flex justify-between items-center text-xs text-[#9bb0db] font-medium px-1">
             <span className="flex items-center gap-1">
               <Target className="w-3.5 h-3.5 text-amber-400" />
@@ -708,7 +857,7 @@ export default function App() {
         </div>
 
         {/* Gráfico de Operações com Candles em Tempo Real - PETRA (Petróleo) */}
-        <div className="w-full bg-[#080d19] border border-[#232f4a] rounded-2xl p-3 flex flex-col gap-2.5 relative shadow-md">
+        <div className="w-full bg-[#080d19] border border-[#232f4a] rounded-2xl p-3 flex flex-col gap-2 relative shadow-md">
           <div className="flex items-center justify-between border-b border-slate-800 pb-2">
             <div className="flex items-center gap-1.5">
               <Radio className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
@@ -729,7 +878,7 @@ export default function App() {
             </span>
           </div>
 
-          <div className="relative w-full h-28 flex items-end justify-between gap-[2px] overflow-hidden px-1">
+          <div className="relative w-full h-24 flex items-end justify-between gap-[2px] overflow-hidden px-1">
             {bars.map((h, i) => (
               <div 
                 key={i} 
@@ -741,14 +890,14 @@ export default function App() {
 
           <div className="flex items-center justify-between text-[10px] text-gray-400 pt-1 border-t border-slate-800/60">
             <span className="flex items-center gap-1 text-amber-400/90 font-medium">
-              <TrendingUp className="w-3 h-3 text-amber-400" /> Fluxo de Extração M1
+              <TrendingUp className="w-3 h-3 text-amber-400" /> Fluxo M1 · Entrada por Op: {formatoBRL(valorEntrada)}
             </span>
             <span className="font-mono text-gray-400">Volatilidade: Alta (OPEP+)</span>
           </div>
         </div>
 
         {/* Histórico de Operações no Petróleo */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between px-1 text-xs text-[#9bb0db] font-semibold">
             <span className="flex items-center gap-1">
               <BarChart2 className="w-3.5 h-3.5 text-amber-400" />
@@ -763,16 +912,16 @@ export default function App() {
               </button>
             )}
           </div>
-          <div className="max-h-40 overflow-y-auto space-y-1.5 pr-0.5 custom-scrollbar">
+          <div className="max-h-36 overflow-y-auto space-y-1.5 pr-0.5 custom-scrollbar">
             {historico.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-4 text-center bg-[#070c17]/60 border border-slate-800/60 rounded-xl px-3">
+              <div className="flex flex-col items-center justify-center py-3.5 text-center bg-[#070c17]/60 border border-slate-800/60 rounded-xl px-3">
                 <p className="text-xs text-[#9bb0db] font-medium">O histórico de operações no petróleo aparecerá aqui.</p>
               </div>
             ) : (
               historico.map(op => {
                 const corTexto = op.tipo === 'WIN' ? 'text-[#00e676]' : op.tipo === 'LOSS' ? 'text-[#ff3b53]' : 'text-white';
                 const sinal = op.tipo === 'WIN' ? '+ ' : op.tipo === 'LOSS' ? '- ' : '';
-                const rotulo = op.tipo === 'WIN' ? 'WIN ✅' : op.tipo === 'LOSS' ? 'LOSS ❌' : 'EMPATE ⚪';
+                const rotulo = op.tipo === 'WIN' ? `WIN (${Math.round(op.payout * 100)}%) ✅` : op.tipo === 'LOSS' ? 'LOSS ❌' : 'EMPATE ⚪';
 
                 return (
                   <div 
@@ -781,13 +930,12 @@ export default function App() {
                   >
                     <div className="flex items-center gap-2">
                       <Droplet className="w-3 h-3 text-amber-400/80 shrink-0" />
-                      <span className="font-bold text-gray-200">{op.par}</span>
-                      <span className="text-[9px] bg-amber-950/80 border border-amber-800/40 text-amber-200 px-1.5 py-0.5 rounded font-mono">
-                        {op.dir} M1
-                      </span>
-                      <span className="text-[9px] text-gray-400 font-mono-numbers">
-                        {op.horario}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-200">{op.par}</span>
+                        <span className="text-[9px] text-gray-400 font-mono">
+                          Entrada: {formatoBRL(op.valorEntrada)} · {op.dir} M1
+                        </span>
+                      </div>
                     </div>
                     <div className="text-right">
                       <span className={`font-bold font-mono-numbers ${corTexto}`}>
@@ -805,7 +953,7 @@ export default function App() {
         </div>
 
         {/* Rodapé: Prova Social & Contador Online no Mercado de Petróleo */}
-        <div className="space-y-2 mt-auto pt-1">
+        <div className="space-y-1.5 mt-auto pt-1">
           <div className="w-full bg-[#0a1020]/95 border border-amber-900/40 rounded-xl py-2 px-3 flex items-center justify-center gap-2 text-xs shadow-sm">
             <span className="text-amber-400 text-sm">🛢️ 📊</span>
             <span className="text-[#00e676] font-semibold truncate">
@@ -818,7 +966,7 @@ export default function App() {
               <strong className="text-white font-bold font-mono-numbers mr-1">
                 {onlineCounter.toLocaleString('pt-BR')}
               </strong> 
-              traders lucrando com petróleo agora
+              traders operando petróleo agora
             </span>
           </div>
         </div>
@@ -844,7 +992,7 @@ export default function App() {
           >
             <button 
               onClick={fecharPopup} 
-              className="absolute top-3 right-3 text-gray-400 hover:text-white text-sm p-1 rounded-full hover:bg-white/10 transition-colors"
+              className="absolute top-3 right-3 text-gray-400 hover:text-white text-sm p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -861,7 +1009,7 @@ export default function App() {
             </div>
 
             <span 
-              className={`text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-2 ${
+              className={`text-xs font-black px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-1 ${
                 popupData.op.tipo === 'WIN'
                   ? 'bg-emerald-950 border border-emerald-500/50 text-[#00e676]'
                   : popupData.op.tipo === 'LOSS'
@@ -869,13 +1017,18 @@ export default function App() {
                     : 'bg-slate-800 border border-white/60 text-white'
               }`}
             >
-              {popupData.op.tipo === 'WIN' && 'LUCRO OBTIDO'}
+              {popupData.op.tipo === 'WIN' && `LUCRO OBTIDO (${Math.round(popupData.op.payout * 100)}% PAYOUT)`}
               {popupData.op.tipo === 'LOSS' && 'PREJUÍZO COMPUTADO'}
               {popupData.op.tipo === 'EMPATE' && 'OPERAÇÃO EMPATADA'}
             </span>
 
+            {/* Informação do Valor da Entrada */}
+            <div className="text-[11px] text-gray-300 font-mono">
+              Valor da Entrada: <strong className="text-white font-bold">{formatoBRL(popupData.op.valorEntrada)}</strong>
+            </div>
+
             <div className="my-2">
-              <span className="text-[11px] text-gray-300 block font-medium">Resultado da Entrada</span>
+              <span className="text-[11px] text-gray-300 block font-medium">Resultado da Operação</span>
               <h2 
                 className={`text-3xl sm:text-4xl font-black font-mono-numbers tracking-tight mt-0.5 ${
                   popupData.op.tipo === 'WIN'
@@ -944,14 +1097,14 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal Completo de Edição de Banca e Meta */}
+      {/* Modal Completo de Configurações: Entrada por Operação, Saldo e Meta */}
       {showConfigModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#0b1324] border border-amber-500/50 rounded-2xl p-5 max-w-[360px] w-full shadow-2xl relative">
+          <div className="bg-[#0b1324] border border-amber-500/50 rounded-2xl p-5 max-w-[370px] w-full shadow-2xl relative">
             <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2.5">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Fuel className="w-4 h-4 text-amber-400" />
-                Configurar Banca no Petróleo
+                <Sliders className="w-4 h-4 text-amber-400" />
+                Configurar Parâmetros de Operação
               </h3>
               <button 
                 onClick={() => setShowConfigModal(false)} 
@@ -961,44 +1114,61 @@ export default function App() {
               </button>
             </div>
 
-            {/* Campo Editável: Saldo da Banca */}
-            <div className="space-y-1.5 mb-3.5">
-              <label className="text-xs font-semibold text-gray-300 flex items-center justify-between">
-                <span>Saldo Inicial da Banca (R$)</span>
-                <span className="text-[10px] text-amber-400">Totalmente Editável</span>
+            {/* SEÇÃO PRINCIPAL: DEFINIR ENTRADA POR OPERAÇÃO */}
+            <div className="space-y-1.5 mb-3.5 bg-gradient-to-r from-amber-950/40 to-yellow-950/20 border border-amber-500/40 rounded-xl p-3">
+              <label className="text-xs font-bold text-amber-300 flex items-center justify-between">
+                <span>Valor da Entrada por Operação (R$)</span>
+                <span className="text-[10px] text-amber-400 font-mono font-normal">Investimento por ordem</span>
               </label>
               <div className="relative flex items-center">
                 <span className="absolute left-3.5 text-base font-bold text-amber-400 font-mono">R$</span>
                 <input
                   type="text"
                   inputMode="decimal"
-                  value={inputSaldoTexto}
-                  onChange={(e) => setInputSaldoTexto(e.target.value)}
+                  value={inputEntradaTexto}
+                  onChange={(e) => setInputEntradaTexto(e.target.value)}
                   placeholder="50,00"
-                  className="w-full bg-[#050914] border-2 border-slate-700 focus:border-amber-400 rounded-xl py-2.5 pl-11 pr-4 text-white font-mono-numbers font-black text-xl focus:outline-none transition-all shadow-inner"
+                  className="w-full bg-[#050914] border-2 border-amber-500/60 focus:border-amber-400 rounded-xl py-2 pl-11 pr-4 text-white font-mono-numbers font-black text-xl focus:outline-none transition-all shadow-inner"
                 />
               </div>
-              <p className="text-[10px] text-gray-400">
-                Digite qualquer valor que desejar (Ex: 35,00, 100,00, 500,00).
+              <p className="text-[10px] text-gray-300">
+                Digite quanto deseja entrar em cada ordem (ex: 20, 50, 100, 250, 500). Payout médio de 90%.
               </p>
-            </div>
 
-            {/* Atalhos Rápidos */}
-            <div className="mb-4">
-              <span className="text-[11px] text-gray-400 font-medium block mb-1.5">
-                Valores Rápidos:
-              </span>
-              <div className="grid grid-cols-5 gap-1.5">
-                {[20, 50, 100, 250, 500].map(val => (
+              {/* Botões Rápidos de Entrada */}
+              <div className="grid grid-cols-6 gap-1 pt-1">
+                {[10, 25, 50, 100, 200, 500].map(val => (
                   <button
                     key={val}
                     type="button"
-                    onClick={() => selecionarPresetBanca(val)}
-                    className="py-1.5 px-1 text-center text-xs font-mono-numbers font-bold rounded-lg border border-slate-700 bg-[#081021] hover:bg-amber-950/40 hover:border-amber-400 text-gray-200 transition-all cursor-pointer"
+                    onClick={() => {
+                      setInputEntradaTexto(val.toFixed(2).replace('.', ','));
+                      setInputMetaTexto((val * 3.5).toFixed(2).replace('.', ','));
+                    }}
+                    className="py-1 px-1 text-center text-xs font-mono-numbers font-bold rounded-lg border border-amber-500/40 bg-[#081021] hover:bg-amber-500 hover:text-black text-amber-200 transition-all cursor-pointer"
                   >
                     R${val}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Campo Editável: Saldo da Banca */}
+            <div className="space-y-1.5 mb-3">
+              <label className="text-xs font-semibold text-gray-300 flex items-center justify-between">
+                <span>Saldo em Conta (R$)</span>
+                <span className="text-[10px] text-gray-400">Totalmente Editável</span>
+              </label>
+              <div className="relative flex items-center">
+                <span className="absolute left-3.5 text-sm font-bold text-gray-400 font-mono">R$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={inputSaldoTexto}
+                  onChange={(e) => setInputSaldoTexto(e.target.value)}
+                  placeholder="200,00"
+                  className="w-full bg-[#050914] border border-slate-700 focus:border-amber-400 rounded-xl py-2 pl-10 pr-4 text-white font-mono-numbers font-bold text-base focus:outline-none transition-all shadow-inner"
+                />
               </div>
             </div>
 
@@ -1009,14 +1179,14 @@ export default function App() {
                 <span className="text-[10px] text-emerald-400">Objetivo</span>
               </label>
               <div className="relative flex items-center">
-                <span className="absolute left-3.5 text-base font-bold text-emerald-400 font-mono">R$</span>
+                <span className="absolute left-3.5 text-sm font-bold text-emerald-400 font-mono">R$</span>
                 <input
                   type="text"
                   inputMode="decimal"
                   value={inputMetaTexto}
                   onChange={(e) => setInputMetaTexto(e.target.value)}
-                  placeholder="202,61"
-                  className="w-full bg-[#050914] border-2 border-slate-700 focus:border-emerald-400 rounded-xl py-2.5 pl-11 pr-4 text-white font-mono-numbers font-black text-lg focus:outline-none transition-all shadow-inner"
+                  placeholder="200,00"
+                  className="w-full bg-[#050914] border border-slate-700 focus:border-emerald-400 rounded-xl py-2 pl-10 pr-4 text-white font-mono-numbers font-bold text-base focus:outline-none transition-all shadow-inner"
                 />
               </div>
             </div>
@@ -1035,7 +1205,7 @@ export default function App() {
                 onClick={salvarConfiguracao}
                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
               >
-                Salvar Valor
+                Salvar Valores
               </button>
             </div>
           </div>
